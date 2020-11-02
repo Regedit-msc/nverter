@@ -1,23 +1,26 @@
+// Require the modules
 const express = require('express');
 const app = express();
-const server = require('http').Server(app);
-const io = require('socket.io')(server);
-const multer  = require('multer');
+const server = require('http').Server(app); // Initiate http server with express
+const io = require('socket.io')(server); // Connect server with socket io
+const multer  = require('multer'); // Multer for file uploads 
 const hbjs = require('handbrake-js');
-const path = require('path');
-const cookieParser = require('cookie-parser');
-const cookieMiddleware = require('./middleware/userCookie');
-const fs = require('fs');
+const path = require('path'); // For file path
+const cookieParser = require('cookie-parser');// For saving user sessions
+const cookieMiddleware = require('./middleware/userCookie');// Middle ware for sessions
+const fs = require('fs');// For reading the file type
 const config = require('config');
 const PORT = config.get('port');
 
-app.set('views', __dirname + '/views');
-app.set('view engine', 'ejs');
-app.use('/', express.static(__dirname + '/public'));
-app.use('/encoded', express.static(__dirname + '/encoded'));
+// Use Middlewares 
+app.set('views', __dirname + '/views'); // views folder for view app.ejs
+app.set('view engine', 'ejs');// Set view engine
+app.use('/', express.static(__dirname + '/public')); // For static files
+app.use('/encoded', express.static(__dirname + '/encoded')); 
 app.use(cookieParser());
 app.use(cookieMiddleware());
 
+// Initialise Multer to save uploaded files with date in uploads folder 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, path.resolve(__dirname , 'uploads'))
@@ -29,6 +32,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({storage : storage});
 
+// When request to /history is made save it according to the user session id 
 app.get('/history', (req, res) => {
     let dir = path.join(__dirname, 'encoded', req.cookies._uid);
     fs.exists(dir, (exists) => {
@@ -43,6 +47,7 @@ app.get('/history', (req, res) => {
     });
 });
 
+// when a file is uploaded move the file to uploads folder 
 app.post('/upload', upload.single('file'), (req, res) => {
     if(req.file){
         let video = req.file,
@@ -77,6 +82,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
     }
 });
 
+// render app.ejs for all routes
 app.get('*', (req, res) => {
     res.render('app');
 });
@@ -109,7 +115,7 @@ let deleteVideo = (path) => {
         if (err) throw err;
     });
 };
-
+// Start socket io connection
 io.on('connection', (socket) => {
 
     socket.on('encode', (data) => {
@@ -150,5 +156,5 @@ io.on('connection', (socket) => {
         });
     });
 });
-
+// Start server
 server.listen(PORT, () => console.log('Server running on Port: '+ PORT));
